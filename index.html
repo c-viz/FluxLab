@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FluxLab</title>
+    <!-- MathJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
+    <style>
+        :root {
+            --bg: #f9fafb;
+            --card-bg: #ffffff;
+            --border: #e5e7eb;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --blue: #2563eb;
+            --blue-hover: #1d4ed8;
+            --red: #ef4444;
+            --green: #10b981;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(4px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            width: 100%;
+        }
+        .header-inner {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 { margin: 0; font-size: 1.875rem; font-weight: 800; color: var(--blue); letter-spacing: -0.025em; }
+        .header p { margin: 0; font-size: 0.875rem; color: var(--text-muted); }
+        .stats { display: flex; gap: 2rem; }
+        .stat-item { text-align: center; }
+        .stat-label { font-size: 0.75rem; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+        .stat-value { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 700; }
+        .stat-value.blue { color: var(--blue); }
+        .stat-value.green { color: var(--green); }
+
+        /* Layout */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        @media (min-width: 1280px) {
+            .main-layout { grid-template-columns: 2fr 1fr; }
+        }
+
+        /* Canvas Area */
+        .viewport {
+            background: var(--card-bg);
+            padding: 0;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            position: relative;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+        canvas { 
+            width: 100%; 
+            aspect-ratio: 1 / 1; 
+            background: white; 
+            border-radius: 0.75rem; 
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Floating Controls */
+        .floating-controls {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(4px);
+            padding: 0.75rem 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            justify-content: center;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-height: calc(100vh - 4rem);
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+
+        .card {
+            background: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .card h2 { 
+            margin: 0 0 1rem 0; 
+            font-size: 1rem; 
+            font-weight: 700; 
+            display: flex; 
+            align-items: center; 
+            gap: 0.5rem; 
+        }
+
+        /* Forms */
+        .form-group { margin-bottom: 0.75rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        label { 
+            display: block; 
+            font-size: 0.75rem; 
+            font-weight: 700; 
+            color: #4b5563; 
+            letter-spacing: 0.025em; 
+            margin-bottom: 0.25rem;
+        }
+        input[type="text"], select {
+            width: 100%;
+            padding: 0.75rem;
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        input[type="text"]:focus, select:focus {
+            border-color: var(--blue);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--blue);
+        }
+
+        /* Buttons */
+        .btn {
+            cursor: pointer;
+            border: none;
+            border-radius: 0.75rem;
+            font-weight: 700;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-primary {
+            background: var(--blue);
+            color: white;
+            padding: 0.75rem 1rem;
+            width: 100%;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
+        }
+        .btn-primary:hover { background: var(--blue-hover); }
+        .btn-reset {
+            background: #f3f4f6;
+            color: #374151;
+            padding: 0.5rem 1rem;
+        }
+        .btn-reset:hover { background: #e5e7eb; }
+        .btn-play {
+            width: 3rem;
+            height: 3rem;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: var(--blue);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+        }
+        .btn-play:hover { background: var(--blue-hover); }
+
+        .btn-preset {
+            padding: 0.75rem;
+            background: #f9fafb;
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+            border-radius: 0.75rem;
+        }
+        .btn-preset:hover {
+            background: #eff6ff;
+            color: var(--blue);
+            border-color: #bfdbfe;
+        }
+
+        /* Toggles */
+        .toggle-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .toggle-item:hover { background: #f9fafb; }
+        .toggle-item span { font-size: 0.875rem; font-weight: 500; color: #4b5563; }
+
+        /* Help */
+        .help-box {
+            background: #eff6ff;
+            border: 1px solid #dbeafe;
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+        .help-box h2 { color: #1e40af; font-size: 0.875rem; margin-bottom: 0.75rem; }
+        .help-box p { font-size: 0.75rem; color: #1d4ed8; margin-bottom: 0.75rem; }
+        .help-box ul { font-size: 0.625rem; color: #2563eb; padding-left: 1rem; margin: 0; }
+        .help-box li { margin-bottom: 0.25rem; }
+
+        .hidden { display: none; }
+        .flex { display: flex; }
+        .items-center { align-items: center; }
+        .gap-2 { gap: 0.5rem; }
+        .gap-3 { gap: 0.75rem; }
+        .gap-4 { gap: 1rem; }
+        .w-32 { width: 8rem; min-width: 100px; }
+        .border-l { border-left: 1px solid var(--border); padding-left: 1rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-inner">
+            <div class="flex items-center gap-3">
+                <div style="width: 2.5rem; height: 2.5rem; background-color: var(--blue); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); flex-shrink: 0;">
+                    <svg style="width:1.5rem; height:1.5rem; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                </div>
+                <div>
+                    <h1>FluxLab</h1>
+                    <p>Vector Field & Flux Visualization<br>&copy; 2026 Stephan Pfannerer</p>
+                </div>
+            </div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label">Net Crossings</div>
+                    <div id="flux-count" class="stat-value blue">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Density</div>
+                    <div id="stat-density" class="stat-value">0.00</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Time</div>
+                    <div id="stat-time" class="stat-value">0.0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Estimated Flux</div>
+                    <div id="estimated-flux" class="stat-value green">0.0000</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="main-layout">
+            <!-- Main Viewport -->
+            <div class="viewport-container">
+                <div class="viewport">
+                    <canvas id="canvas" width="1000" height="1000"></canvas>
+                    <div id="fps-counter" style="position:absolute; bottom:1rem; right:1rem; font-family:var(--font-mono); font-size:0.75rem; font-weight:700; color:var(--text-muted); background:rgba(255,255,255,0.8); backdrop-filter:blur(2px); padding:0.25rem 0.5rem; border-radius:0.5rem; pointer-events:none; z-index:20; box-shadow:0 1px 2px rgba(0,0,0,0.05);">FPS: 0</div>
+                    
+                    <!-- Floating Controls -->
+                    <div class="floating-controls">
+                        <button id="btn-play" class="btn btn-play">
+                            <svg id="icon-pause" style="width:1.5rem;height:1.5rem" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            <svg id="icon-play" class="hidden" style="width:1.5rem;height:1.5rem" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </button>
+                        <button id="btn-reset" class="btn btn-reset">Reset</button>
+                        <div class="flex items-center gap-3 border-l">
+                            <span class="stat-label">Speed</span>
+                            <span id="val-speed" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--blue);min-width:2.5rem">1.0x</span>
+                            <input id="slider-speed" type="range" min="0.1" max="5" step="0.1" value="1" class="w-32">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Controls -->
+            <div class="sidebar">
+                <!-- Field Definition -->
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                        <h2 style="margin:0">
+                            <svg style="width:1.25rem;height:1.25rem;color:var(--blue)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            Vector Field
+                        </h2>
+                        <select id="preset-field" class="btn btn-preset" style="width:auto;padding:0.25rem 0.5rem" onchange="setFieldPreset(this.value)">
+                            <option value="">Presets...</option>
+                            <option value="Vortex">Vortex</option>
+                            <option value="Source">Source</option>
+                            <option value="Sink">Sink</option>
+                            <option value="Uniform">Uniform</option>
+                            <option value="Saddle">Saddle</option>
+                            <option value="Shear">Shear</option>
+                            <option value="Dipole">Dipole</option>
+                            <option value="Polynomial">Polynomial</option>
+                        </select>
+                    </div>
+                    <div class="grid-2">
+                        <div>
+                            <label>P(x, y)</label>
+                            <input id="input-p" type="text" value="y">
+                        </div>
+                        <div>
+                            <label>Q(x, y)</label>
+                            <input id="input-q" type="text" value="-x">
+                        </div>
+                    </div>
+                    <div class="flex gap-2" style="margin-top:1rem">
+                        <button id="btn-apply-field" class="btn btn-primary hidden" style="flex:2">Apply Field</button>
+                        <button id="btn-discard-field" class="btn btn-reset hidden" style="flex:1">Discard</button>
+                    </div>
+                </div>
+
+                <!-- Curve Definition -->
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                        <h2 style="margin:0">
+                            <svg style="width:1.25rem;height:1.25rem;color:var(--red)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                            Parametric Curve
+                        </h2>
+                        <select id="preset-curve" class="btn btn-preset" style="width:auto;padding:0.25rem 0.5rem" onchange="setCurvePreset(this.value)">
+                            <option value="">Presets...</option>
+                            <option value="Circle">Circle</option>
+                            <option value="Ellipse">Ellipse</option>                           
+                            <option value="RotatingLine">Rotating Line</option>
+                            <option value="Spiral">Spiral</option>
+                            <option value="Parabola">Parabola</option>
+                        </select>
+                    </div>
+                    <div class="grid-2" style="margin-bottom:0.75rem">
+                        <div>
+                            <label>x(t)</label>
+                            <input id="input-cx" type="text" value="2 * cos(t)">
+                        </div>
+                        <div>
+                            <label>y(t)</label>
+                            <input id="input-cy" type="text" value="2 * sin(t)">
+                        </div>
+                    </div>
+                    <div class="grid-2" style="margin-bottom:1rem">
+                        <div>
+                            <label>t min</label>
+                            <input id="input-tmin" type="text" value="0">
+                        </div>
+                        <div>
+                            <label>t max</label>
+                            <input id="input-tmax" type="text" value="2 * pi">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="toggle-item" style="padding:0;margin-bottom:0.5rem">
+                            <span style="font-size:0.75rem;font-weight:700">Enable Parameter (a)</span>
+                            <input type="checkbox" id="check-use-a">
+                        </label>
+                    </div>
+
+                    <div id="container-a" class="hidden" style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
+                        <div class="form-group">
+                            <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                                <label>Value (a)</label>
+                                <span id="val-param-a" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--red)">0.50</span>
+                            </div>
+                            <input id="slider-param-a" type="range" min="0" max="1" step="0.001" value="0.5">
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2" style="margin-top:1rem">
+                        <button id="btn-apply-curve" class="btn btn-primary hidden" style="flex:2">Apply Curve</button>
+                        <button id="btn-discard-curve" class="btn btn-reset hidden" style="flex:1">Discard</button>
+                    </div>
+                </div>
+
+                <!-- Simulation Settings -->
+                <div class="card">
+                    <h2>
+                        <svg style="width:1.25rem;height:1.25rem;color:var(--green)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Simulation
+                    </h2>
+                    <div class="form-group">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                            <label>Particle Count</label>
+                            <span id="val-particles" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--blue)">1500</span>
+                        </div>
+                        <input id="slider-count" type="range" min="100" max="5000" step="100" value="1500">
+                    </div>
+                    <div class="form-group">
+                        <label class="toggle-item" style="padding:0;margin-bottom:0.5rem">
+                            <span style="font-size:0.75rem;font-weight:700">Enable Grid Balancing</span>
+                            <input type="checkbox" id="check-grid-balancing" checked>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                            <label>Resample Rate</label>
+                            <span id="val-resample" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--blue)">4.0%</span>
+                        </div>
+                        <input id="slider-resample" type="range" min="0" max="100" step="0.5" value="4">
+                    </div>
+                    <div class="form-group">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                            <label>Substeps</label>
+                            <span id="val-substeps" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--blue)">1</span>
+                        </div>
+                        <input id="slider-substeps" type="range" min="1" max="10" step="1" value="1">
+                    </div>
+                    <div class="form-group">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                            <label>Domain Size</label>
+                            <span id="val-domain" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--blue)">5.0</span>
+                        </div>
+                        <input id="slider-domain" type="range" min="1" max="20" step="0.5" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Integrator</label>
+                        <select id="select-integrator">
+                            <option value="euler">Euler</option>
+                            <option value="rk2">RK2 (Midpoint)</option>
+                            <option value="rk4" selected>RK4</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Boundary Mode</label>
+                        <select id="select-boundary">
+                            <option value="wrap">Wrap (Periodic)</option>
+                            <option value="random" selected>Random Resample</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2" style="margin-top:1rem">
+                        <button id="btn-apply-sim" class="btn btn-primary hidden" style="flex:2">Apply Settings</button>
+                        <button id="btn-discard-sim" class="btn btn-reset hidden" style="flex:1">Discard</button>
+                    </div>
+                </div>
+
+                <!-- Visualization Settings -->
+                <div class="card">
+                    <h2>
+                        <svg style="width:1.25rem;height:1.25rem;color:var(--blue)" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                        Visuals
+                    </h2>
+                    <label class="toggle-item">
+                        <span>Show Field Grid</span>
+                        <input type="checkbox" id="check-field" checked>
+                    </label>
+                    <label class="toggle-item">
+                        <span>Show Particles</span>
+                        <input type="checkbox" id="check-particles" checked>
+                    </label>
+                    <label class="toggle-item">
+                        <span>Show Curve</span>
+                        <input type="checkbox" id="check-curve" checked>
+                    </label>
+                    <label class="toggle-item">
+                        <span>Show Normals</span>
+                        <input type="checkbox" id="check-normals">
+                    </label>
+                    <label class="toggle-item">
+                        <span>Particle Trails</span>
+                        <input type="checkbox" id="check-trails">
+                    </label>
+                    <div class="form-group hidden" id="trail-fade-container">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:0.25rem">
+                            <label>Trail Fade Speed</label>
+                            <span id="val-trail-fade" style="font-size:0.625rem;font-family:var(--font-mono);font-weight:700;color:var(--blue)">0.15</span>
+                        </div>
+                        <input id="slider-trail-fade" type="range" min="0.01" max="0.5" step="0.01" value="0.15">
+                    </div>
+                    <label class="toggle-item">
+                        <span>Cursor Probe</span>
+                        <input type="checkbox" id="check-cursor" checked>
+                    </label>
+                </div>
+
+                <!-- Help Section -->
+                <div class="help-box">
+                    <h2>
+                        <svg style="width:1rem;height:1rem" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        How it works
+                    </h2>
+                    <p style="font-size:0.875rem; color:var(--text-muted); margin-bottom:1rem;">
+                        Particles move according to the vector field <strong>F(x, y) = (P(x, y), Q(x, y))</strong>. 
+                        <strong>Flux</strong> is the net flow across the curve <strong>C(t) = (x(t), y(t))</strong>.
+                        This is estimated based on the number of particles crossing the curve, normalized by the particle density and simulation time. The crossing direction determines whether they contribute positively or negatively to the flux.
+                    </p>
+
+                    <div style="background:rgba(255,255,255,0.5); padding:0.75rem; border-radius:0.5rem; margin-bottom:1rem;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#374151; margin-bottom:0.25rem">Theoretical Flux</div>
+                        <div style="font-family:serif; font-style:italic; font-size:1rem; color:#111827;">
+                            &Phi; = &int;<sub>C</sub> F &middot; n ds
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.5); padding:0.75rem; border-radius:0.5rem; margin-bottom:1rem;">
+                        <div style="font-size:0.75rem; font-weight:700; color:#374151; margin-bottom:0.25rem">Simulation Estimate</div>
+                        <div style="font-family:serif; font-style:italic; font-size:1rem; color:#111827;">
+                            &Phi; &approx; <span style="font-family:var(--font-mono)">Net Crossings</span> / (<span style="font-family:var(--font-mono)">Density</span> &times; <span style="font-family:var(--font-mono)">Time</span>)
+                        </div>
+                    </div>
+                    
+                    <h3 style="font-size:0.75rem; font-weight:700; color:#4b5563; margin:0 0 0.5rem 0;">Math Expressions</h3>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-bottom:1rem">
+                        Use variables <code>x, y, t, a</code> and constants like <code>pi, e</code>.
+                        Functions: <code>sin, cos, tan, exp, log, sqrt, abs, pow, atan2</code>.
+                    </p>
+
+                    <h3 style="font-size:0.75rem;margin:0 0 0.5rem 0;color:#4b5563">Preset Verification</h3>
+                    <div style="font-size:0.65rem;font-family:var(--font-mono);line-height:1.4;background:rgba(255,255,255,0.5);padding:0.5rem;border-radius:0.5rem">
+                        <strong>Vortex + Circle:</strong><br>
+                        F = (y, -x), C = (2cos t, 2sin t)<br>
+                        &Phi; = &oint; F &middot; n ds = 0<br><br>
+                        <strong>Source + Circle:</strong><br>
+                        F = (x, y), C = (2cos t, 2sin t)<br>
+                        &Phi; = &oint; F &middot; n ds = 8&pi; &approx; 25.13
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            if (typeof math === 'undefined') {
+                alert('MathJS failed to load. Please check your internet connection.');
+                return;
+            }
+
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Offscreen canvas for particle trails
+            const trailCanvas = document.createElement('canvas');
+            trailCanvas.width = canvas.width;
+            trailCanvas.height = canvas.height;
+            const trailCtx = trailCanvas.getContext('2d');
+
+            const state = {
+                playing: true,
+                speed: 1,
+                particles: [],
+                flux: 0,
+                time: 0,
+                pExpr: 'y',
+                qExpr: '-x',
+                compiledP: null,
+                compiledQ: null,
+                cxExpr: '2 * cos(t)',
+                cyExpr: '2 * sin(t)',
+                tMinExpr: '0',
+                tMaxExpr: '2 * pi',
+                compiledCX: null,
+                compiledCY: null,
+                tMin: 0,
+                tMax: Math.PI * 2,
+                particleCount: 1500,
+                resampleRate: 0.04,
+                gridBalancing: true,
+                substeps: 1,
+                domainSize: 5,
+                paramA: 0.5,
+                showParamA: false,
+                integrator: 'rk4',
+                boundaryMode: 'random',
+                mouse: { x: 0, y: 0, active: false },
+                settings: {
+                    showField: true,
+                    showParticles: true,
+                    showCurve: true,
+                    showNormals: true,
+                    showTrails: true,
+                    trailFadeRate: 0.15,
+                    showCursor: true
+                }
+            };
+
+            function compileExpressions() {
+                try {
+                    state.compiledP = math.compile(state.pExpr);
+                    state.compiledQ = math.compile(state.qExpr);
+                    state.compiledCX = math.compile(state.cxExpr);
+                    state.compiledCY = math.compile(state.cyExpr);
+                    state.tMin = math.evaluate(state.tMinExpr);
+                    state.tMax = math.evaluate(state.tMaxExpr);
+                    updateParamA();
+                } catch (e) {
+                    console.error("Math error:", e);
+                    state.compiledP = state.compiledP || math.compile('0');
+                    state.compiledQ = state.compiledQ || math.compile('0');
+                    state.compiledCX = state.compiledCX || math.compile('2 * cos(t)');
+                    state.compiledCY = state.compiledCY || math.compile('2 * sin(t)');
+                }
+            }
+
+            function getVector(x, y) {
+                const aVal = state.showParamA ? state.paramA : 1;
+                try {
+                    const u = state.compiledP.evaluate({ x, y, a: aVal });
+                    const v = state.compiledQ.evaluate({ x, y, a: aVal });
+                    return { u, v };
+                } catch (e) {
+                    return { u: 0, v: 0 };
+                }
+            }
+
+            function reset() {
+                state.particles = [];
+                for (let i = 0; i < state.particleCount; i++) {
+                    const x = (Math.random() - 0.5) * state.domainSize * 2;
+                    const y = (Math.random() - 0.5) * state.domainSize * 2;
+                    state.particles.push({ x, y, px: x, py: y });
+                }
+                state.flux = 0;
+                state.time = 0;
+                document.getElementById('flux-count').innerText = '0';
+                document.getElementById('estimated-flux').innerText = '0.0000';
+                document.getElementById('stat-time').innerText = '0.0';
+                const density = state.particles.length / (state.domainSize * state.domainSize * 4);
+                document.getElementById('stat-density').innerText = density.toFixed(2);
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                trailCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+                checkChanges();
+            }
+
+            function getCurve() {
+                const pts = [];
+                const steps = 120;
+                const aVal = state.showParamA ? state.paramA : 1;
+                for (let i = 0; i <= steps; i++) {
+                    const t = state.tMin + (i / steps) * (state.tMax - state.tMin);
+                    try {
+                        pts.push({ 
+                            x: state.compiledCX.evaluate({ t, a: aVal }), 
+                            y: state.compiledCY.evaluate({ t, a: aVal }) 
+                        });
+                    } catch (e) {
+                        pts.push({ x: 0, y: 0 });
+                    }
+                }
+                return pts;
+            }
+
+            function drawArrow(ctx, x, y, u, v, color = '#94a3b8', scale = 0.2) {
+                const mag = Math.sqrt(u*u + v*v);
+                if (mag < 0.001) return;
+                
+                const headlen = 4;
+                const dx = u * scale;
+                const dy = -v * scale; // Flip Y for canvas
+                
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + dx, y + dy);
+                ctx.stroke();
+
+                // Arrow head
+                const angle = Math.atan2(dy, dx);
+                ctx.beginPath();
+                ctx.moveTo(x + dx, y + dy);
+                ctx.lineTo(x + dx - headlen * Math.cos(angle - Math.PI / 6), y + dy - headlen * Math.sin(angle - Math.PI / 6));
+                ctx.moveTo(x + dx, y + dy);
+                ctx.lineTo(x + dx - headlen * Math.cos(angle + Math.PI / 6), y + dy - headlen * Math.sin(angle + Math.PI / 6));
+                ctx.stroke();
+            }
+
+            function balanceDensity() {
+                const gridSize = 15; 
+                const cellCount = gridSize * gridSize;
+                const targetCount = state.particles.length / cellCount;
+                const grid = new Array(cellCount).fill(0).map(() => []);
+                
+                // 1. Bin particles
+                for (let i = 0; i < state.particles.length; i++) {
+                    const p = state.particles[i];
+                    let u = (p.x + state.domainSize) / (state.domainSize * 2);
+                    let v = (p.y + state.domainSize) / (state.domainSize * 2);
+                    
+                    if (u >= 0 && u < 1 && v >= 0 && v < 1) {
+                        const gx = Math.floor(u * gridSize);
+                        const gy = Math.floor(v * gridSize);
+                        const idx = gy * gridSize + gx;
+                        grid[idx].push(i);
+                    }
+                }
+
+                const excessParticles = [];
+                const deficitCells = [];
+                const lowThresh = targetCount * 0.6;
+                const highThresh = targetCount * 1.4;
+
+                for (let i = 0; i < cellCount; i++) {
+                    const count = grid[i].length;
+                    if (count > highThresh) {
+                        const numExcess = Math.floor(count - targetCount);
+                        for (let k = 0; k < numExcess; k++) excessParticles.push(grid[i][k]);
+                    } else if (count < lowThresh) {
+                        const numNeeded = Math.floor(targetCount - count);
+                        for (let k = 0; k < numNeeded; k++) deficitCells.push(i);
+                    }
+                }
+
+                const moveCount = Math.min(excessParticles.length, deficitCells.length);
+                
+                for (let i = 0; i < moveCount; i++) {
+                    const pIdx = excessParticles[i];
+                    const cellIdx = deficitCells[i];
+                    const p = state.particles[pIdx];
+                    
+                    const gy = Math.floor(cellIdx / gridSize);
+                    const gx = cellIdx % gridSize;
+                    const cellSize = (state.domainSize * 2) / gridSize;
+                    
+                    p.x = -state.domainSize + (gx + Math.random()) * cellSize;
+                    p.y = -state.domainSize + (gy + Math.random()) * cellSize;
+                    p.px = p.x; p.py = p.y;
+                }
+            }
+
+            let lastFpsTime = 0;
+            let frameCount = 0;
+
+            function loop(timestamp) {
+                if (!timestamp) timestamp = performance.now();
+                frameCount++;
+                if (timestamp - lastFpsTime >= 1000) {
+                    document.getElementById('fps-counter').innerText = 'FPS: ' + Math.round((frameCount * 1000) / (timestamp - lastFpsTime));
+                    lastFpsTime = timestamp;
+                    frameCount = 0;
+                }
+
+                const w = canvas.width;
+                const h = canvas.height;
+                const domain = state.domainSize;
+                const s = w / (domain * 2); 
+
+                const curve = getCurve();
+
+                // 1. UPDATE STATE
+                if (state.playing) {
+                    const totalDt = 0.016 * state.speed;
+                    const substeps = state.substeps;
+                    const dt = totalDt / substeps;
+    
+                    for (let i = 0; i < state.particles.length; i++) {
+                        const p = state.particles[i];
+                        p.px = p.x; p.py = p.y;
+    
+                        // Probabilistic Resampling
+                        if (Math.random() < state.resampleRate) {
+                            p.x = (Math.random() - 0.5) * domain * 2;
+                            p.y = (Math.random() - 0.5) * domain * 2;
+                        }
+    
+                        for (let s_idx = 0; s_idx < substeps; s_idx++) {
+                            const prevX = p.x;
+                            const prevY = p.y;
+                            let wrapped = false;
+    
+                            if (state.integrator === 'euler') {
+                                const v = getVector(p.x, p.y);
+                                p.x += v.u * dt;
+                                p.y += v.v * dt;
+                            } else if (state.integrator === 'rk2') {
+                                const v1 = getVector(p.x, p.y);
+                                const v2 = getVector(p.x + v1.u * dt * 0.5, p.y + v1.v * dt * 0.5);
+                                p.x += v2.u * dt;
+                                p.y += v2.v * dt;
+                            } else if (state.integrator === 'rk4') {
+                                const k1 = getVector(p.x, p.y);
+                                const k2 = getVector(p.x + k1.u * dt * 0.5, p.y + k1.v * dt * 0.5);
+                                const k3 = getVector(p.x + k2.u * dt * 0.5, p.y + k2.v * dt * 0.5);
+                                const k4 = getVector(p.x + k3.u * dt, p.y + k3.v * dt);
+                                p.x += (k1.u + 2*k2.u + 2*k3.u + k4.u) * dt / 6;
+                                p.y += (k1.v + 2*k2.v + 2*k3.v + k4.v) * dt / 6;
+                            }
+    
+    
+                            // Boundary Conditions
+                            const outX = Math.abs(p.x) > domain;
+                            const outY = Math.abs(p.y) > domain;
+    
+                            if (outX || outY) {
+                                if (state.boundaryMode === 'wrap') {
+                                    if (p.x > domain) p.x -= 2 * domain;
+                                    if (p.x < -domain) p.x += 2 * domain;
+                                    if (p.y > domain) p.y -= 2 * domain;
+                                    if (p.y < -domain) p.y += 2 * domain;
+                                    wrapped = true;
+                                } else if (state.boundaryMode === 'random') {
+                                    p.x = (Math.random() - 0.5) * domain * 2;
+                                    p.y = (Math.random() - 0.5) * domain * 2;
+                                    p.px = p.x; p.py = p.y;
+                                    wrapped = true;
+                                }
+                            }
+    
+                            // Flux Detection (Skip if wrapped)
+                            if (!wrapped) {
+                                for (let j = 0; j < curve.length - 1; j++) {
+                                    const q1 = curve[j], q2 = curve[j + 1];
+                                    const det = (p.x - prevX) * (q2.y - q1.y) - (p.y - prevY) * (q2.x - q1.x);
+                                    if (Math.abs(det) > 1e-9) {
+                                        const l = ((q2.y - q1.y) * (q2.x - prevX) + (q1.x - q2.x) * (q2.y - prevY)) / det;
+                                        const g = ((prevY - p.y) * (q2.x - prevX) + (p.x - prevX) * (q2.y - prevY)) / det;
+                                        if (l > 0 && l < 1 && g > 0 && g < 1) {
+                                            const side = (q2.x - q1.x) * (prevY - q1.y) - (q2.y - q1.y) * (prevX - q1.x);
+                                            if (side > 0) state.flux++; else state.flux--;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+    
+                    if (state.gridBalancing) {
+                        balanceDensity();
+                    }
+    
+                    state.time += totalDt;
+                    document.getElementById('flux-count').innerText = state.flux;
+                    document.getElementById('stat-time').innerText = state.time.toFixed(1);
+                    const density = state.particles.length / (domain * domain * 4); 
+                    document.getElementById('stat-density').innerText = density.toFixed(2);
+                    if (state.time > 0) {
+                        document.getElementById('estimated-flux').innerText = (state.flux / (density * state.time)).toFixed(4);
+                    }
+                }
+
+                // 2. DRAW FRAME
+                // 2a. Manage Trail Canvas
+                if (state.settings.showTrails) {
+                    // Fade out old trails
+                    if (state.playing) {
+                        trailCtx.globalCompositeOperation = 'destination-out';
+                        trailCtx.fillStyle = `rgba(0, 0, 0, ${state.settings.trailFadeRate})`;
+                        trailCtx.fillRect(0, 0, w, h);
+                        trailCtx.globalCompositeOperation = 'source-over';
+                    }
+                    // Draw new particles to trail canvas
+                    if (state.settings.showParticles) {
+                        trailCtx.fillStyle = '#3b82f6';
+                        for (const p of state.particles) {
+                            trailCtx.beginPath();
+                            trailCtx.arc((p.x + domain) * s, (domain - p.y) * s, 1.2, 0, Math.PI * 2);
+                            trailCtx.fill();
+                        }
+                    }
+                } else {
+                    trailCtx.clearRect(0, 0, w, h);
+                }
+
+                // 2b. Clear Main Canvas
+                ctx.clearRect(0, 0, w, h);
+
+                // 2c. Draw Trails (behind grid/field)
+                if (state.settings.showTrails) {
+                    ctx.drawImage(trailCanvas, 0, 0);
+                }
+
+                // 2d. Draw Static Grid
+                ctx.strokeStyle = '#f1f5f9';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let i = -domain; i <= domain; i += 1) {
+                    const x = (i + domain) * s;
+                    ctx.moveTo(x, 0); ctx.lineTo(x, h);
+                    const y = (domain - i) * s;
+                    ctx.moveTo(0, y); ctx.lineTo(w, y);
+                }
+                ctx.stroke();
+
+                // 2e. Vector Field Grid
+                if (state.settings.showField) {
+                    const gridScale = s * 0.2; 
+                    const step = domain / 10;
+                    for (let ix = -domain; ix <= domain; ix += step) {
+                        for (let iy = -domain; iy <= domain; iy += step) {
+                            const v = getVector(ix, iy);
+                            drawArrow(ctx, (ix + domain) * s, (domain - iy) * s, v.u, v.v, 'rgba(71, 85, 105, 0.5)', gridScale);
+                        }
+                    }
+                }
+
+                // 2f. Draw Particles (if not using trails)
+                if (!state.settings.showTrails && state.settings.showParticles) {
+                    ctx.fillStyle = '#3b82f6';
+                    for (const p of state.particles) {
+                        ctx.beginPath();
+                        ctx.arc((p.x + domain) * s, (domain - p.y) * s, 1.2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // 2g. Draw Curve, Normals, Cursor
+                if (state.settings.showCurve) {
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    for (let i = 0; i < curve.length; i++) {
+                        const cx = (curve[i].x + domain) * s;
+                        const cy = (domain - curve[i].y) * s;
+                        if (i === 0) ctx.moveTo(cx, cy);
+                        else ctx.lineTo(cx, cy);
+                    }
+                    ctx.stroke();
+                }
+
+                // 9. Draw Normals
+                if (state.settings.showNormals && state.settings.showCurve) {
+                    ctx.strokeStyle = '#f87171';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < curve.length - 1; i += 2) {
+                        const q1 = curve[i], q2 = curve[i + 1];
+                        const mx = (q1.x + q2.x) / 2;
+                        const my = (q1.y + q2.y) / 2;
+                        const dx = q2.x - q1.x;
+                        const dy = q2.y - q1.y;
+                        const mag = Math.sqrt(dx*dx + dy*dy);
+                        if (mag > 0) {
+                            const nx = dy / mag;
+                            const ny = -dx / mag;
+                            drawArrow(ctx, (mx + domain) * s, (domain - my) * s, nx, ny, '#f87171', s * 0.2);
+                        }
+                    }
+                }
+
+                // 10. Cursor Probe (Cleanly on top)
+                if (state.settings.showCursor && state.mouse.active) {
+                    const mx = (state.mouse.x / w) * (domain * 2) - domain;
+                    const my = domain - (state.mouse.y / h) * (domain * 2);
+                    const v = getVector(mx, my);
+                    
+                    // Highlight circle
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(state.mouse.x, state.mouse.y, 4, 0, Math.PI * 2);
+                    ctx.stroke();
+
+                    // Vector arrow (scaled same as grid)
+                    drawArrow(ctx, state.mouse.x, state.mouse.y, v.u, v.v, '#10b981', s * 0.2);
+                    
+                    // Label
+                    ctx.fillStyle = '#1e293b';
+                    ctx.font = 'bold 12px font-mono';
+                    ctx.fillText(`F(${mx.toFixed(2)}, ${my.toFixed(2)}) = (${v.u.toFixed(2)}, ${v.v.toFixed(2)})`, state.mouse.x + 10, state.mouse.y - 10);
+                }
+
+                requestAnimationFrame(loop);
+            }
+
+            function updateParamA() {
+                const slider = document.getElementById('slider-param-a');
+                state.paramA = parseFloat(slider.value);
+                document.getElementById('val-param-a').innerText = state.paramA.toFixed(2);
+            }
+
+            function checkChanges() {
+                const p = document.getElementById('input-p').value;
+                const q = document.getElementById('input-q').value;
+                const cx = document.getElementById('input-cx').value;
+                const cy = document.getElementById('input-cy').value;
+                const tmin = document.getElementById('input-tmin').value;
+                const tmax = document.getElementById('input-tmax').value;
+
+                const fieldChanged = p !== state.pExpr || q !== state.qExpr;
+                const curveChanged = cx !== state.cxExpr || cy !== state.cyExpr || tmin !== state.tMinExpr || tmax !== state.tMaxExpr;
+
+                document.getElementById('btn-apply-field').classList.toggle('hidden', !fieldChanged);
+                document.getElementById('btn-discard-field').classList.toggle('hidden', !fieldChanged);
+                
+                document.getElementById('btn-apply-curve').classList.toggle('hidden', !curveChanged);
+                document.getElementById('btn-discard-curve').classList.toggle('hidden', !curveChanged);
+
+                const simChanged = 
+                    parseInt(document.getElementById('slider-count').value) !== state.particleCount ||
+                    document.getElementById('check-grid-balancing').checked !== state.gridBalancing ||
+                    Math.abs((parseFloat(document.getElementById('slider-resample').value) / 100) - state.resampleRate) > 1e-9 ||
+                    parseInt(document.getElementById('slider-substeps').value) !== state.substeps ||
+                    Math.abs(parseFloat(document.getElementById('slider-domain').value) - state.domainSize) > 1e-9 ||
+                    document.getElementById('select-integrator').value !== state.integrator ||
+                    document.getElementById('select-boundary').value !== state.boundaryMode;
+
+                document.getElementById('btn-apply-sim').classList.toggle('hidden', !simChanged);
+                document.getElementById('btn-discard-sim').classList.toggle('hidden', !simChanged);
+            }
+
+            // Event Listeners
+            document.getElementById('btn-play').onclick = function() {
+                state.playing = !state.playing;
+                document.getElementById('icon-pause').classList.toggle('hidden', !state.playing);
+                document.getElementById('icon-play').classList.toggle('hidden', state.playing);
+            };
+            document.getElementById('btn-reset').onclick = reset;
+            
+            document.getElementById('btn-apply-field').onclick = function() {
+                state.pExpr = document.getElementById('input-p').value;
+                state.qExpr = document.getElementById('input-q').value;
+                compileExpressions();
+                reset();
+            };
+
+            document.getElementById('btn-apply-curve').onclick = function() {
+                state.cxExpr = document.getElementById('input-cx').value;
+                state.cyExpr = document.getElementById('input-cy').value;
+                state.tMinExpr = document.getElementById('input-tmin').value;
+                state.tMaxExpr = document.getElementById('input-tmax').value;
+                compileExpressions();
+                reset();
+            };
+
+            document.getElementById('btn-discard-field').onclick = function() {
+                document.getElementById('input-p').value = state.pExpr;
+                document.getElementById('input-q').value = state.qExpr;
+                checkChanges();
+            };
+
+            document.getElementById('btn-discard-curve').onclick = function() {
+                document.getElementById('input-cx').value = state.cxExpr;
+                document.getElementById('input-cy').value = state.cyExpr;
+                document.getElementById('input-tmin').value = state.tMinExpr;
+                document.getElementById('input-tmax').value = state.tMaxExpr;
+                checkChanges();
+            };
+
+            document.getElementById('btn-apply-sim').onclick = function() {
+                state.particleCount = parseInt(document.getElementById('slider-count').value);
+                state.gridBalancing = document.getElementById('check-grid-balancing').checked;
+                state.resampleRate = parseFloat(document.getElementById('slider-resample').value) / 100;
+                state.substeps = parseInt(document.getElementById('slider-substeps').value);
+                state.domainSize = parseFloat(document.getElementById('slider-domain').value);
+                state.integrator = document.getElementById('select-integrator').value;
+                state.boundaryMode = document.getElementById('select-boundary').value;
+                reset();
+            };
+
+            document.getElementById('btn-discard-sim').onclick = function() {
+                document.getElementById('slider-count').value = state.particleCount;
+                document.getElementById('val-particles').innerText = state.particleCount;
+
+                document.getElementById('check-grid-balancing').checked = state.gridBalancing;
+
+                const resamplePercent = state.resampleRate * 100;
+                document.getElementById('slider-resample').value = resamplePercent;
+                document.getElementById('val-resample').innerText = resamplePercent.toFixed(1) + '%';
+
+                document.getElementById('slider-substeps').value = state.substeps;
+                document.getElementById('val-substeps').innerText = state.substeps;
+
+                document.getElementById('slider-domain').value = state.domainSize;
+                document.getElementById('val-domain').innerText = state.domainSize.toFixed(1);
+
+                document.getElementById('select-integrator').value = state.integrator;
+                document.getElementById('select-boundary').value = state.boundaryMode;
+
+                checkChanges();
+            };
+
+            const inputs = ['input-p', 'input-q', 'input-cx', 'input-cy', 'input-tmin', 'input-tmax'];
+            inputs.forEach(id => {
+                document.getElementById(id).oninput = checkChanges;
+            });
+            document.getElementById('slider-speed').oninput = function() {
+                state.speed = parseFloat(this.value);
+                document.getElementById('val-speed').innerText = state.speed.toFixed(1) + 'x';
+            };
+            document.getElementById('slider-count').oninput = function() {
+                document.getElementById('val-particles').innerText = this.value;
+                checkChanges();
+            };
+            document.getElementById('slider-resample').oninput = function() {
+                const val = parseFloat(this.value);
+                document.getElementById('val-resample').innerText = val.toFixed(1) + '%';
+                checkChanges();
+            };
+            document.getElementById('slider-substeps').oninput = function() {
+                document.getElementById('val-substeps').innerText = this.value;
+                checkChanges();
+            };
+            document.getElementById('slider-domain').oninput = function() {
+                document.getElementById('val-domain').innerText = parseFloat(this.value).toFixed(1);
+                checkChanges();
+            };
+            document.getElementById('slider-param-a').oninput = function() {
+                updateParamA();
+                reset();
+            };
+            document.getElementById('check-use-a').onchange = function(e) {
+                state.showParamA = e.target.checked;
+                document.getElementById('container-a').classList.toggle('hidden', !state.showParamA);
+                reset();
+            };
+            document.getElementById('select-integrator').onchange = function() {
+                checkChanges();
+            };
+            document.getElementById('select-boundary').onchange = function() {
+                checkChanges();
+            };
+
+            document.getElementById('check-grid-balancing').onchange = function(e) {
+                checkChanges();
+            };
+
+
+            // Checkboxes
+            document.getElementById('check-field').onchange = (e) => state.settings.showField = e.target.checked;
+            document.getElementById('check-particles').onchange = (e) => state.settings.showParticles = e.target.checked;
+            document.getElementById('check-curve').onchange = (e) => state.settings.showCurve = e.target.checked;
+            document.getElementById('check-normals').onchange = (e) => state.settings.showNormals = e.target.checked;
+            document.getElementById('check-trails').onchange = (e) => {
+                state.settings.showTrails = e.target.checked;
+                document.getElementById('trail-fade-container').classList.toggle('hidden', !e.target.checked);
+            };
+            document.getElementById('slider-trail-fade').oninput = (e) => {
+                state.settings.trailFadeRate = parseFloat(e.target.value);
+                document.getElementById('val-trail-fade').innerText = state.settings.trailFadeRate.toFixed(2);
+            };
+            document.getElementById('check-cursor').onchange = (e) => state.settings.showCursor = e.target.checked;
+
+            // Sync checkboxes with initial state
+            document.getElementById('check-curve').checked = state.settings.showCurve;
+            document.getElementById('check-normals').checked = state.settings.showNormals;
+            document.getElementById('check-trails').checked = state.settings.showTrails;
+            document.getElementById('trail-fade-container').classList.toggle('hidden', !state.settings.showTrails);
+            document.getElementById('slider-trail-fade').value = state.settings.trailFadeRate;
+
+            // Mouse interaction
+            canvas.onmousemove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                state.mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+                state.mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
+                state.mouse.active = true;
+            };
+            canvas.onmouseleave = () => state.mouse.active = false;
+
+            window.setFieldPreset = function(name) {
+                if (!name) return;
+                const p = { 
+                    Vortex: ['y', '-x'], 
+                    Source: ['x', 'y'], 
+                    Sink: ['-x', '-y'],
+                    Uniform: ['1', '0'], 
+                    Saddle: ['x', '-y'],
+                    Shear: ['y', '0'],
+                    Dipole: ['(x^2 - y^2) / (x^2 + y^2)^2', '(2*x*y) / (x^2 + y^2)^2'],
+                    Polynomial: ['(x^2 - y)/10', '(x + y^2)/10']
+                }[name];
+                document.getElementById('input-p').value = p[0];
+                document.getElementById('input-q').value = p[1];
+                checkChanges();
+            };
+
+            window.setCurvePreset = function(name) {
+                if (!name) return;
+                const presets = {
+                    Circle: {
+                        cx: '2 * cos(t)', cy: '2 * sin(t)',
+                        tmin: '0', tmax: '2 * pi',
+                        useA: false
+                    },
+                    Ellipse: {
+                        cx: '3 * cos(t)', cy: '1.5 * sin(t)',
+                        tmin: '0', tmax: '2 * pi',
+                        useA: false
+                    },
+                    RotatingLine: {
+                        cx: 't * cos(a * 2 * pi)', cy: 't * sin(a * 2 * pi)',
+                        tmin: '-1.5', tmax: '1.5',
+                        useA: true
+                    },
+                    Spiral: {
+                        cx: 't * cos(4*t + a * 2 * pi)', cy: 't * sin(4*t + a * 2 * pi)',
+                        tmin: '0', tmax: '2.5',
+                        useA: true
+                    },
+                    Parabola: {
+                        cx: 't', cy: 't^2',
+                        tmin: '-2', tmax: '2',
+                        useA: false
+                    },
+                };
+                const p = presets[name];
+                document.getElementById('input-cx').value = p.cx;
+                document.getElementById('input-cy').value = p.cy;
+                document.getElementById('input-tmin').value = p.tmin;
+                document.getElementById('input-tmax').value = p.tmax;
+                
+                const checkA = document.getElementById('check-use-a');
+                checkA.checked = p.useA;
+                checkA.dispatchEvent(new Event('change'));
+
+                checkChanges();
+            };
+
+            // Sync UI state with potential browser-restored values
+            state.speed = parseFloat(document.getElementById('slider-speed').value);
+            document.getElementById('val-speed').innerText = state.speed.toFixed(1) + 'x';
+            document.getElementById('val-particles').innerText = document.getElementById('slider-count').value;
+            document.getElementById('val-resample').innerText = parseFloat(document.getElementById('slider-resample').value).toFixed(1) + '%';
+            document.getElementById('val-substeps').innerText = document.getElementById('slider-substeps').value;
+            document.getElementById('val-domain').innerText = parseFloat(document.getElementById('slider-domain').value).toFixed(1);
+            updateParamA();
+
+            compileExpressions();
+            reset();
+            requestAnimationFrame(loop);
+        };
+    </script>
+</body>
+</html>
