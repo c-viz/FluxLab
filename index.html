@@ -64,11 +64,26 @@
         .stat-value.green { color: var(--green); }
 
         @media (max-width: 900px) {
-            .header-inner {
-                flex-direction: column;
-                gap: 1rem;
+            .header, .header-inner {
+                display: contents;
+            }
+            .header-brand {
+                display: flex;
+                justify-content: center;
+                padding: 1rem 2rem;
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(4px);
+                border-bottom: 1px solid var(--border);
             }
             .stats {
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                background: rgba(255, 255, 255, 0.9);
+                backdrop-filter: blur(4px);
+                border-bottom: 1px solid var(--border);
+                padding: 0.75rem 1rem;
+                width: 100%;
                 flex-wrap: wrap;
                 justify-content: center;
                 gap: 1rem;
@@ -77,13 +92,22 @@
             .stat-value { font-size: 1.25rem; }
         }
 
+        @media (max-width: 1279px) {
+            .container {
+                padding: 0.5rem;
+            }
+            .main-layout, .sidebar {
+                gap: 1rem;
+            }
+        }
+
         /* Layout */
         .main-layout {
             display: grid;
             grid-template-columns: 1fr;
             gap: 2rem;
         }
-        @media (min-width: 1280px) {
+        @media (min-width: 900px) {
             .main-layout { grid-template-columns: 2fr 1fr; }
             .sidebar {
                 height: 0;
@@ -119,6 +143,7 @@
             align-items: center;
             gap: 1.5rem;
             padding: 0.75rem 1.5rem;
+            flex-wrap: wrap;
             background: var(--card-bg);
             border-bottom-left-radius: 1rem;
             border-bottom-right-radius: 1rem;
@@ -133,7 +158,6 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
-            padding-right: 0.5rem;
         }
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
@@ -272,7 +296,7 @@
 <body>
     <header class="header">
         <div class="header-inner">
-            <div class="flex items-center gap-3">
+            <div class="header-brand flex items-center gap-3">
                 <div style="width: 2.5rem; height: 2.5rem; background-color: var(--blue); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); flex-shrink: 0;">
                     <svg style="width:1.5rem; height:1.5rem; color: white;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                 </div>
@@ -590,6 +614,7 @@
                 particles: [],
                 flux: 0,
                 time: 0,
+                estimatedFlux: 0,
                 pExpr: 'y',
                 qExpr: '-x',
                 compiledP: null,
@@ -661,6 +686,7 @@
                 }
                 state.flux = 0;
                 state.time = 0;
+                state.estimatedFlux = 0;
                 document.getElementById('flux-count').innerText = '0';
                 document.getElementById('estimated-flux').innerText = '0.0000';
                 document.getElementById('stat-time').innerText = '0.0';
@@ -874,7 +900,13 @@
                     const density = state.particles.length / (domain * domain * 4); 
                     document.getElementById('stat-density').innerText = density.toFixed(2);
                     if (state.time > 0) {
-                        document.getElementById('estimated-flux').innerText = (state.flux / (density * state.time)).toFixed(4);
+                        const rawEstimate = state.flux / (density * state.time);
+                        const smoothingFactor = 1; // Use a small value for smooth updates
+                        state.estimatedFlux = (1 - smoothingFactor) * state.estimatedFlux + smoothingFactor * rawEstimate;
+                        document.getElementById('estimated-flux').innerText = state.estimatedFlux.toFixed(4);
+                    } else {
+                        state.estimatedFlux = 0;
+                        document.getElementById('estimated-flux').innerText = '0.0000';
                     }
                 }
 
