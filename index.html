@@ -530,6 +530,10 @@
                         <input type="checkbox" id="check-normals">
                     </label>
                     <label class="toggle-item">
+                        <span>Show Crossings</span>
+                        <input type="checkbox" id="check-crossings">
+                    </label>
+                    <label class="toggle-item">
                         <span>Particle Trails</span>
                         <input type="checkbox" id="check-trails">
                     </label>
@@ -612,9 +616,9 @@
                 playing: true,
                 speed: 1,
                 particles: [],
+                crossings: [],
                 flux: 0,
                 time: 0,
-                estimatedFlux: 0,
                 pExpr: 'y',
                 qExpr: '-x',
                 compiledP: null,
@@ -644,7 +648,8 @@
                     showNormals: true,
                     showTrails: true,
                     trailFadeRate: 0.15,
-                    showCursor: true
+                    showCursor: true,
+                    showCrossings: true
                 }
             };
 
@@ -684,9 +689,9 @@
                     const y = (Math.random() - 0.5) * state.domainSize * 2;
                     state.particles.push({ x, y, px: x, py: y });
                 }
+                state.crossings = [];
                 state.flux = 0;
                 state.time = 0;
-                state.estimatedFlux = 0;
                 document.getElementById('flux-count').innerText = '0';
                 document.getElementById('estimated-flux').innerText = '0.0000';
                 document.getElementById('stat-time').innerText = '0.0';
@@ -763,18 +768,32 @@
 
                 const excessParticles = [];
                 const deficitCells = [];
-                const lowThresh = targetCount * 0.6;
-                const highThresh = targetCount * 1.4;
+                const lowThresh = targetCount * 0.8;
+                const highThresh = targetCount * 1.2;
 
                 for (let i = 0; i < cellCount; i++) {
                     const count = grid[i].length;
                     if (count > highThresh) {
                         const numExcess = Math.floor(count - targetCount);
-                        for (let k = 0; k < numExcess; k++) excessParticles.push(grid[i][k]);
+                        
+                        // Shuffle the list of particles in the cell to randomize which ones are moved
+                        const cellParticles = grid[i];
+                        for (let j = cellParticles.length - 1; j > 0; j--) {
+                            const k = Math.floor(Math.random() * (j + 1));
+                            [cellParticles[j], cellParticles[k]] = [cellParticles[k], cellParticles[j]];
+                        }
+
+                        for (let k = 0; k < numExcess; k++) excessParticles.push(cellParticles[k]);
                     } else if (count < lowThresh) {
                         const numNeeded = Math.floor(targetCount - count);
                         for (let k = 0; k < numNeeded; k++) deficitCells.push(i);
                     }
+                }
+
+                // Shuffle deficitCells to randomize target locations
+                for (let i = deficitCells.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [deficitCells[i], deficitCells[j]] = [deficitCells[j], deficitCells[i]];
                 }
 
                 const moveCount = Math.min(excessParticles.length, deficitCells.length);
@@ -812,6 +831,10 @@
                 const s = w / (domain * 2); 
 
                 const curve = getCurve();
+
+                // Update crossing ages and filter old ones
+                state.crossings.forEach(c => c.age++);
+                state.crossings = state.crossings.filter(c => c.age < 60); // Max age of 60 frames
 
                 // 1. UPDATE STATE
                 if (state.playing) {
@@ -882,7 +905,12 @@
                                         const g = ((prevY - p.y) * (q2.x - prevX) + (p.x - prevX) * (q2.y - prevY)) / det;
                                         if (l > 0 && l < 1 && g > 0 && g < 1) {
                                             const side = (q2.x - q1.x) * (prevY - q1.y) - (q2.y - q1.y) * (prevX - q1.x);
-                                            if (side > 0) state.flux++; else state.flux--;
+                                            const direction = side > 0 ? 1 : -1;
+                                            state.flux += direction;
+
+                                            const crossX = prevX + l * (p.x - prevX);
+                                            const crossY = prevY + l * (p.y - prevY);
+                                            state.crossings.push({ x: crossX, y: crossY, direction: direction, age: 0 });
                                         }
                                     }
                                 }
@@ -901,11 +929,8 @@
                     document.getElementById('stat-density').innerText = density.toFixed(2);
                     if (state.time > 0) {
                         const rawEstimate = state.flux / (density * state.time);
-                        const smoothingFactor = 1; // Use a small value for smooth updates
-                        state.estimatedFlux = (1 - smoothingFactor) * state.estimatedFlux + smoothingFactor * rawEstimate;
-                        document.getElementById('estimated-flux').innerText = state.estimatedFlux.toFixed(4);
+                        document.getElementById('estimated-flux').innerText = rawEstimate.toFixed(4);
                     } else {
-                        state.estimatedFlux = 0;
                         document.getElementById('estimated-flux').innerText = '0.0000';
                     }
                 }
@@ -987,6 +1012,22 @@
                         else ctx.lineTo(cx, cy);
                     }
                     ctx.stroke();
+                }
+
+                // Draw Crossings
+                if (state.settings.showCrossings) {
+                    const maxAge = 60;
+                    for (const crossing of state.crossings) {
+                        const color = crossing.direction > 0 ? 'rgba(52, 211, 153, 0.9)' : 'rgba(168, 85, 247, 0.9)'; // Green (positive) and Purple (negative)
+                        const crossX_screen = (crossing.x + domain) * s;
+                        const crossY_screen = (domain - crossing.y) * s;
+                        
+                        ctx.fillStyle = color;
+                        ctx.beginPath();
+                        const radius = 4 * (1 - crossing.age / maxAge); // Shrink as it ages
+                        ctx.arc(crossX_screen, crossY_screen, Math.max(0, radius), 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 }
 
                 // 9. Draw Normals
@@ -1191,6 +1232,7 @@
             document.getElementById('check-particles').onchange = (e) => state.settings.showParticles = e.target.checked;
             document.getElementById('check-curve').onchange = (e) => state.settings.showCurve = e.target.checked;
             document.getElementById('check-normals').onchange = (e) => state.settings.showNormals = e.target.checked;
+            document.getElementById('check-crossings').onchange = (e) => state.settings.showCrossings = e.target.checked;
             document.getElementById('check-trails').onchange = (e) => {
                 state.settings.showTrails = e.target.checked;
                 document.getElementById('trail-fade-container').classList.toggle('hidden', !e.target.checked);
@@ -1204,6 +1246,7 @@
             // Sync checkboxes with initial state
             document.getElementById('check-curve').checked = state.settings.showCurve;
             document.getElementById('check-normals').checked = state.settings.showNormals;
+            document.getElementById('check-crossings').checked = state.settings.showCrossings;
             document.getElementById('check-trails').checked = state.settings.showTrails;
             document.getElementById('trail-fade-container').classList.toggle('hidden', !state.settings.showTrails);
             document.getElementById('slider-trail-fade').value = state.settings.trailFadeRate;
